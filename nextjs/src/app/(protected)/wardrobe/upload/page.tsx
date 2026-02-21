@@ -19,9 +19,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Upload, Loader2, ArrowLeft } from "lucide-react";
+import { Upload, Loader2, ArrowLeft, Sparkles, Shirt } from "lucide-react";
 import Link from "next/link";
 import { useStreamingRequest } from "@/hooks/use-streaming-request";
+import { motion, AnimatePresence } from "framer-motion";
 import type { ClothingCategory, WardrobeItem } from "@/types";
 
 interface SegmentClothingResponse {
@@ -101,49 +102,85 @@ export default function UploadClothingPage() {
   const displayError = error || streaming.error;
 
   return (
-    <div className="max-w-2xl mx-auto">
+    <motion.div 
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="max-w-2xl mx-auto pb-10"
+    >
       <div className="mb-6">
         <Link
           href="/wardrobe"
-          className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground"
+          className="inline-flex items-center text-sm font-medium text-muted-foreground hover:text-primary transition-colors bg-secondary/50 hover:bg-secondary px-3 py-1.5 rounded-full"
         >
-          <ArrowLeft className="mr-1 h-4 w-4" />
+          <ArrowLeft className="mr-1.5 h-4 w-4" />
           Back to Wardrobe
         </Link>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Add Clothing Item</CardTitle>
-          <CardDescription>
-            Upload a photo of your clothing and we&apos;ll extract it for your
-            digital wardrobe
-          </CardDescription>
+      <Card className="border-border/50 shadow-xl bg-background/50 backdrop-blur-sm overflow-hidden">
+        <CardHeader className="bg-secondary/20 border-b border-border/40 pb-6">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="p-2.5 rounded-xl bg-primary/10 text-primary">
+              <Shirt className="h-6 w-6" />
+            </div>
+            <div>
+              <CardTitle className="text-2xl">Add Clothing Item</CardTitle>
+              <CardDescription className="text-base mt-1">
+                Upload a photo of your clothing and our AI will extract it for your digital wardrobe.
+              </CardDescription>
+            </div>
+          </div>
         </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-6">
-            {displayError && (
-              <div className="p-3 text-sm text-red-600 bg-red-50 dark:bg-red-950/50 dark:text-red-400 rounded-md">
-                {displayError}
-              </div>
-            )}
+        <CardContent className="p-6">
+          <form onSubmit={handleSubmit} className="space-y-8">
+            <AnimatePresence mode="wait">
+              {displayError && (
+                <motion.div 
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className="p-4 text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-xl"
+                >
+                  {displayError}
+                </motion.div>
+              )}
 
-            {streaming.isStreaming && (
-              <div className="p-3 text-sm text-blue-700 bg-blue-50 dark:bg-blue-950/40 dark:text-blue-300 rounded-md">
-                <p>{streaming.status || "Processing clothing image..."}</p>
-                {streaming.totalSteps > 0 && (
-                  <p className="mt-1 opacity-80">
-                    Step {streaming.step}/{streaming.totalSteps}
-                  </p>
-                )}
-              </div>
-            )}
+              {streaming.isStreaming && (
+                <motion.div 
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className="p-4 text-sm text-primary bg-primary/10 border border-primary/20 rounded-xl flex items-start gap-3"
+                >
+                  <Loader2 className="h-5 w-5 animate-spin shrink-0 mt-0.5" />
+                  <div className="flex-1">
+                    <p className="font-medium">{streaming.status || "Processing clothing image..."}</p>
+                    {streaming.totalSteps > 0 && (
+                      <div className="mt-3">
+                        <div className="flex justify-between text-xs mb-1.5 opacity-80">
+                          <span>Progress</span>
+                          <span>{Math.round((streaming.step / streaming.totalSteps) * 100)}%</span>
+                        </div>
+                        <div className="h-1.5 bg-primary/20 rounded-full overflow-hidden">
+                          <motion.div 
+                            className="h-full bg-primary"
+                            initial={{ width: 0 }}
+                            animate={{ width: `${(streaming.step / streaming.totalSteps) * 100}%` }}
+                            transition={{ duration: 0.5 }}
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
 
             <div
-              className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors cursor-pointer ${
+              className={`relative border-2 border-dashed rounded-2xl p-8 text-center transition-all duration-300 cursor-pointer overflow-hidden ${
                 isDragging
-                  ? "border-primary bg-primary/5"
-                  : "border-muted-foreground/25 hover:border-primary/50"
+                  ? "border-primary bg-primary/5 scale-[1.02]"
+                  : "border-border hover:border-primary/50 hover:bg-secondary/20"
               }`}
               onDragOver={(e) => {
                 e.preventDefault();
@@ -162,66 +199,86 @@ export default function UploadClothingPage() {
                 input.click();
               }}
             >
-              {imagePreview ? (
-                <div className="space-y-3">
-                  <img
-                    src={imagePreview}
-                    alt="Clothing preview"
-                    className="max-h-64 mx-auto rounded-lg object-contain"
-                  />
-                  <p className="text-sm text-muted-foreground">
-                    Click or drag to replace
-                  </p>
+              {isDragging && (
+                <div className="absolute inset-0 bg-primary/5 backdrop-blur-sm z-10 flex items-center justify-center">
+                  <Upload className="h-12 w-12 text-primary animate-bounce" />
                 </div>
+              )}
+
+              {imagePreview ? (
+                <motion.div 
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  className="space-y-4"
+                >
+                  <div className="relative inline-block">
+                    <img
+                      src={imagePreview}
+                      alt="Clothing preview"
+                      className="max-h-64 mx-auto rounded-xl object-contain shadow-md"
+                    />
+                    <div className="absolute inset-0 rounded-xl ring-1 ring-inset ring-black/10" />
+                  </div>
+                  <p className="text-sm font-medium text-muted-foreground">
+                    Click or drag to replace image
+                  </p>
+                </motion.div>
               ) : (
-                <div className="space-y-3">
-                  <Upload className="h-10 w-10 mx-auto text-muted-foreground" />
+                <div className="space-y-6 py-6">
+                  <div className="mx-auto w-16 h-16 rounded-full bg-secondary flex items-center justify-center mb-2">
+                    <Upload className="h-8 w-8 text-muted-foreground" />
+                  </div>
                   <div>
-                    <p className="font-medium">
+                    <p className="text-lg font-medium mb-1">
                       Drag & drop your clothing photo
                     </p>
-                    <p className="text-sm text-muted-foreground mt-1">
-                      JPEG, PNG or WebP up to 10MB
+                    <p className="text-sm text-muted-foreground">
+                      or click to browse files
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-4">
+                      Supports JPEG, PNG or WebP up to 10MB
                     </p>
                   </div>
                 </div>
               )}
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="name">Item Name</Label>
-              <Input
-                id="name"
-                placeholder="e.g., Blue Denim Jacket"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                required
-              />
-            </div>
+            <div className="grid sm:grid-cols-2 gap-6">
+              <div className="space-y-3">
+                <Label htmlFor="name" className="text-base">Item Name</Label>
+                <Input
+                  id="name"
+                  placeholder="e.g., Blue Denim Jacket"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  required
+                  className="h-12 text-base bg-secondary/30 border-border/50 focus:bg-background"
+                />
+              </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="category">Category</Label>
-              <Select
-                value={category}
-                onValueChange={(v) => setCategory(v as ClothingCategory)}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {categories.map((cat) => (
-                    <SelectItem key={cat.value} value={cat.value}>
-                      {cat.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <div className="space-y-3">
+                <Label htmlFor="category" className="text-base">Category</Label>
+                <Select
+                  value={category}
+                  onValueChange={(v) => setCategory(v as ClothingCategory)}
+                >
+                  <SelectTrigger className="h-12 text-base bg-secondary/30 border-border/50 focus:bg-background">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {categories.map((cat) => (
+                      <SelectItem key={cat.value} value={cat.value} className="text-base py-2">
+                        {cat.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
 
             <Button
               type="submit"
-              className="w-full"
-              size="lg"
+              className="w-full h-14 text-lg shadow-lg shadow-primary/20 hover:shadow-xl hover:shadow-primary/30 transition-all mt-4"
               disabled={streaming.isStreaming || !imagePreview || !name}
             >
               {streaming.isStreaming ? (
@@ -231,14 +288,14 @@ export default function UploadClothingPage() {
                 </>
               ) : (
                 <>
-                  <Upload className="mr-2 h-5 w-5" />
-                  Upload & Process
+                  <Sparkles className="mr-2 h-5 w-5" />
+                  Upload & Process Item
                 </>
               )}
             </Button>
           </form>
         </CardContent>
       </Card>
-    </div>
+    </motion.div>
   );
 }

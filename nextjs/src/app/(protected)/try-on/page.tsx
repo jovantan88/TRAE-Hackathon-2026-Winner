@@ -14,9 +14,11 @@ import {
   Check,
   Heart,
   Download,
+  Sparkles
 } from "lucide-react";
 import Link from "next/link";
 import { useStreamingRequest } from "@/hooks/use-streaming-request";
+import { motion, AnimatePresence } from "framer-motion";
 import type { UserModel, WardrobeItem, ClothingCategory } from "@/types";
 import type { TryOnResult } from "@/types";
 
@@ -121,166 +123,228 @@ export default function TryOnPage() {
 
   if (loading) {
     return (
-      <div className="grid md:grid-cols-2 gap-6">
-        <Skeleton className="h-96" />
-        <Skeleton className="h-96" />
+      <div className="grid lg:grid-cols-2 gap-8 animate-in fade-in duration-500">
+        <Skeleton className="h-[600px] rounded-3xl" />
+        <Skeleton className="h-[600px] rounded-3xl" />
       </div>
     );
   }
 
   if (!model) {
     return (
-      <Card>
-        <CardContent className="py-16 text-center">
-          <ScanFace className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-          <h3 className="text-lg font-semibold mb-2">No Model Found</h3>
-          <p className="text-muted-foreground mb-4">
-            You need to create your model first before trying on clothes
-          </p>
-          <Link href="/onboarding">
-            <Button>
-              <ScanFace className="mr-2 h-4 w-4" />
-              Create My Model
-            </Button>
-          </Link>
-        </CardContent>
-      </Card>
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="max-w-md mx-auto mt-12"
+      >
+        <Card className="border-dashed border-2 bg-background/50">
+          <CardContent className="py-16 text-center">
+            <div className="p-4 rounded-full bg-secondary mb-4 inline-block">
+              <ScanFace className="h-8 w-8 text-muted-foreground" />
+            </div>
+            <h3 className="text-xl font-semibold mb-2">No Model Found</h3>
+            <p className="text-muted-foreground mb-6">
+              You need to create your digital twin first before trying on clothes.
+            </p>
+            <Link href="/onboarding">
+              <Button size="lg" className="shadow-md">
+                <ScanFace className="mr-2 h-4 w-4" />
+                Create My Model
+              </Button>
+            </Link>
+          </CardContent>
+        </Card>
+      </motion.div>
     );
   }
 
   return (
-    <div>
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold">Virtual Try-On</h1>
-        <p className="text-muted-foreground">
-          Select clothing items and see how they look on you
+    <motion.div 
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      className="space-y-8 pb-10"
+    >
+      <div className="flex flex-col gap-2">
+        <h1 className="text-3xl font-bold tracking-tight">Virtual Try-On</h1>
+        <p className="text-lg text-muted-foreground">
+          Mix and match items to see how they look on your digital twin.
         </p>
       </div>
 
-      {displayError && (
-        <div className="mb-6 p-3 text-sm text-red-600 bg-red-50 dark:bg-red-950/50 dark:text-red-400 rounded-md">
-          {displayError}
-        </div>
-      )}
+      <AnimatePresence>
+        {displayError && (
+          <motion.div 
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            className="p-4 text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-xl"
+          >
+            {displayError}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-      <div className="grid md:grid-cols-2 gap-6">
+      <div className="grid lg:grid-cols-12 gap-8">
         {/* Left panel - Model and Result */}
-        <div className="space-y-4">
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-lg">
-                {resultImage ? "Try-On Result" : "Your Model"}
+        <div className="lg:col-span-5 space-y-6">
+          <Card className="overflow-hidden border-border/50 shadow-lg bg-background/50 backdrop-blur-sm">
+            <CardHeader className="pb-4 border-b border-border/40 bg-secondary/20">
+              <CardTitle className="text-lg flex items-center gap-2">
+                {resultImage ? (
+                  <><Sparkles className="h-5 w-5 text-primary" /> Your New Look</>
+                ) : (
+                  <><ScanFace className="h-5 w-5 text-primary" /> Your Digital Twin</>
+                )}
               </CardTitle>
             </CardHeader>
-            <CardContent>
-              {streaming.isStreaming ? (
-                <div className="aspect-[3/4] flex flex-col items-center justify-center bg-muted rounded-lg">
-                  <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
-                  <p className="font-medium">
-                    {streaming.status || "Generating your look..."}
-                  </p>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    {streaming.totalSteps > 0
-                      ? `Step ${streaming.step}/${streaming.totalSteps}`
-                      : "This may take up to 30 seconds"}
-                  </p>
-                </div>
-              ) : resultImage ? (
-                <div className="space-y-3">
-                  <img
-                    src={resultImage}
-                    alt="Try-on result"
-                    className="w-full rounded-lg object-cover aspect-[3/4]"
-                  />
-                  <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="flex-1"
-                      onClick={handleFavorite}
+            <CardContent className="p-0">
+              <AnimatePresence mode="wait">
+                {streaming.isStreaming ? (
+                  <motion.div 
+                    key="streaming"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="aspect-[3/4] flex flex-col items-center justify-center bg-secondary/30 relative overflow-hidden"
+                  >
+                    <div className="absolute inset-0 bg-gradient-to-t from-primary/5 to-transparent" />
+                    <motion.div 
+                      animate={{ rotate: 360 }}
+                      transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+                      className="relative z-10 mb-6"
                     >
-                      <Heart className="mr-2 h-4 w-4" />
-                      Favorite
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="flex-1"
-                      asChild
-                    >
-                      <a href={resultImage} download>
-                        <Download className="mr-2 h-4 w-4" />
-                        Download
-                      </a>
-                    </Button>
-                  </div>
-                </div>
-              ) : (
-                <img
-                  src={model.model_image_url}
-                  alt="Your model"
-                  className="w-full rounded-lg object-cover aspect-[3/4]"
-                />
-              )}
+                      <div className="p-4 rounded-full bg-background shadow-lg border border-border/50">
+                        <Wand2 className="h-8 w-8 text-primary" />
+                      </div>
+                    </motion.div>
+                    <p className="font-medium text-lg relative z-10">
+                      {streaming.status || "Styling your outfit..."}
+                    </p>
+                    <p className="text-sm text-muted-foreground mt-2 relative z-10">
+                      {streaming.totalSteps > 0
+                        ? `Step ${streaming.step} of ${streaming.totalSteps}`
+                        : "Applying AI magic..."}
+                    </p>
+                    {streaming.totalSteps > 0 && (
+                      <div className="w-48 h-1.5 bg-secondary rounded-full mt-6 overflow-hidden relative z-10">
+                        <motion.div 
+                          className="h-full bg-primary"
+                          initial={{ width: 0 }}
+                          animate={{ width: `${(streaming.step / streaming.totalSteps) * 100}%` }}
+                          transition={{ duration: 0.5 }}
+                        />
+                      </div>
+                    )}
+                  </motion.div>
+                ) : resultImage ? (
+                  <motion.div 
+                    key="result"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className="relative"
+                  >
+                    <img
+                      src={resultImage}
+                      alt="Try-on result"
+                      className="w-full object-cover aspect-[3/4]"
+                    />
+                    <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/60 to-transparent flex gap-3">
+                      <Button
+                        variant="secondary"
+                        className="flex-1 bg-background/90 backdrop-blur-md hover:bg-background"
+                        onClick={handleFavorite}
+                      >
+                        <Heart className="mr-2 h-4 w-4" />
+                        Save Look
+                      </Button>
+                      <Button
+                        variant="secondary"
+                        className="flex-1 bg-background/90 backdrop-blur-md hover:bg-background"
+                        asChild
+                      >
+                        <a href={resultImage} download>
+                          <Download className="mr-2 h-4 w-4" />
+                          Download
+                        </a>
+                      </Button>
+                    </div>
+                  </motion.div>
+                ) : (
+                  <motion.div 
+                    key="model"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                  >
+                    <img
+                      src={model.model_image_url}
+                      alt="Your model"
+                      className="w-full object-cover aspect-[3/4]"
+                    />
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </CardContent>
           </Card>
 
           <Button
-            className="w-full"
-            size="lg"
+            className="w-full h-14 text-lg shadow-lg shadow-primary/20 hover:shadow-xl hover:shadow-primary/30 transition-all"
             disabled={selectedItems.size === 0 || streaming.isStreaming}
             onClick={handleGenerate}
           >
             {streaming.isStreaming ? (
               <>
                 <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                {streaming.status || "Generating..."}
+                Generating...
               </>
             ) : (
               <>
-                <Wand2 className="mr-2 h-5 w-5" />
-                Generate Try-On ({selectedItems.size} item
-                {selectedItems.size !== 1 ? "s" : ""})
+                <Sparkles className="mr-2 h-5 w-5" />
+                Generate Try-On ({selectedItems.size} item{selectedItems.size !== 1 ? "s" : ""})
               </>
             )}
           </Button>
         </div>
 
         {/* Right panel - Clothing selector */}
-        <div>
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-lg">Select Clothing</CardTitle>
-              <p className="text-sm text-muted-foreground">
-                Choose up to 6 items ({selectedItems.size}/6 selected)
-              </p>
+        <div className="lg:col-span-7">
+          <Card className="h-full border-border/50 shadow-sm bg-background/50 backdrop-blur-sm flex flex-col">
+            <CardHeader className="pb-4 border-b border-border/40">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-xl">Select Clothing</CardTitle>
+                <div className="px-3 py-1 rounded-full bg-secondary text-sm font-medium">
+                  {selectedItems.size}/6 selected
+                </div>
+              </div>
             </CardHeader>
-            <CardContent>
+            <CardContent className="p-6 flex-1 flex flex-col">
               {items.length === 0 ? (
-                <div className="py-8 text-center">
-                  <Shirt className="h-10 w-10 mx-auto text-muted-foreground mb-3" />
-                  <p className="text-sm text-muted-foreground mb-3">
-                    No items in your wardrobe yet
+                <div className="flex-1 flex flex-col items-center justify-center py-12 text-center">
+                  <div className="p-4 rounded-full bg-secondary mb-4">
+                    <Shirt className="h-10 w-10 text-muted-foreground" />
+                  </div>
+                  <h3 className="text-lg font-medium mb-2">Your wardrobe is empty</h3>
+                  <p className="text-muted-foreground mb-6 max-w-xs">
+                    Add some clothing items to your wardrobe to start styling outfits.
                   </p>
                   <Link href="/wardrobe/upload">
-                    <Button size="sm">Add Clothing</Button>
+                    <Button>Add Clothing</Button>
                   </Link>
                 </div>
               ) : (
-                <>
-                  <div className="mb-4 overflow-x-auto">
+                <div className="flex flex-col h-full">
+                  <div className="mb-6 overflow-x-auto pb-2 scrollbar-hide">
                     <Tabs
                       value={activeCategory}
                       onValueChange={(v) =>
                         setActiveCategory(v as ClothingCategory | "all")
                       }
                     >
-                      <TabsList className="h-8">
+                      <TabsList className="h-11 bg-secondary/50 p-1">
                         {categories.map((cat) => (
                           <TabsTrigger
                             key={cat.value}
                             value={cat.value}
-                            className="text-xs px-2 py-1"
+                            className="rounded-md px-4 data-[state=active]:bg-background data-[state=active]:shadow-sm transition-all"
                           >
                             {cat.label}
                           </TabsTrigger>
@@ -288,45 +352,60 @@ export default function TryOnPage() {
                       </TabsList>
                     </Tabs>
                   </div>
-                  <div className="grid grid-cols-3 gap-2 max-h-[500px] overflow-y-auto">
-                    {filteredItems.map((item) => {
-                      const isSelected = selectedItems.has(item.id);
-                      return (
-                        <button
-                          key={item.id}
-                          onClick={() => toggleItem(item.id)}
-                          className={`relative rounded-lg overflow-hidden border-2 transition-all ${
-                            isSelected
-                              ? "border-primary ring-2 ring-primary/20"
-                              : "border-transparent hover:border-muted-foreground/25"
-                          }`}
-                        >
-                          <img
-                            src={
-                              item.segmented_image_url ||
-                              item.original_image_url
-                            }
-                            alt={item.name}
-                            className="w-full aspect-square object-cover"
-                          />
-                          {isSelected && (
-                            <div className="absolute top-1 right-1 bg-primary text-primary-foreground rounded-full p-0.5">
-                              <Check className="h-3 w-3" />
+                  
+                  <div className="grid grid-cols-3 sm:grid-cols-4 gap-4 overflow-y-auto pr-2 pb-4 flex-1 content-start">
+                    <AnimatePresence mode="popLayout">
+                      {filteredItems.map((item) => {
+                        const isSelected = selectedItems.has(item.id);
+                        return (
+                          <motion.button
+                            layout
+                            initial={{ opacity: 0, scale: 0.9 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.9 }}
+                            key={item.id}
+                            onClick={() => toggleItem(item.id)}
+                            className={`group relative rounded-xl overflow-hidden border-2 transition-all duration-300 text-left ${
+                              isSelected
+                                ? "border-primary shadow-md shadow-primary/20"
+                                : "border-transparent hover:border-primary/30 bg-secondary/20"
+                            }`}
+                          >
+                            <div className="aspect-square relative overflow-hidden bg-secondary/30">
+                              <img
+                                src={
+                                  item.segmented_image_url ||
+                                  item.original_image_url
+                                }
+                                alt={item.name}
+                                className={`w-full h-full object-cover transition-transform duration-500 ${isSelected ? 'scale-105' : 'group-hover:scale-105'}`}
+                              />
+                              <div className={`absolute inset-0 transition-colors duration-300 ${isSelected ? 'bg-primary/10' : 'bg-black/0 group-hover:bg-black/5'}`} />
+                              
+                              {isSelected && (
+                                <motion.div 
+                                  initial={{ scale: 0 }}
+                                  animate={{ scale: 1 }}
+                                  className="absolute top-2 right-2 bg-primary text-primary-foreground rounded-full p-1 shadow-sm"
+                                >
+                                  <Check className="h-4 w-4" />
+                                </motion.div>
+                              )}
                             </div>
-                          )}
-                          <div className="p-1">
-                            <p className="text-xs truncate">{item.name}</p>
-                          </div>
-                        </button>
-                      );
-                    })}
+                            <div className={`p-2.5 transition-colors ${isSelected ? 'bg-primary/5' : 'bg-background/50'}`}>
+                              <p className="text-xs font-medium line-clamp-1">{item.name}</p>
+                            </div>
+                          </motion.button>
+                        );
+                      })}
+                    </AnimatePresence>
                   </div>
-                </>
+                </div>
               )}
             </CardContent>
           </Card>
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 }

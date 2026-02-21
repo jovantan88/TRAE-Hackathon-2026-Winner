@@ -2,7 +2,7 @@ import { GoogleGenAI, type Part } from "@google/genai";
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! });
 
-export const IMAGE_MODEL = "gemini-3-pro-image-preview";
+export const IMAGE_MODEL = "gemini-2.5-flash-image";
 export const TEXT_MODEL = "gemini-3-flash-preview";
 
 interface GeminiImageResult {

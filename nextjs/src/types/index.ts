@@ -63,6 +63,33 @@ export interface Favorite {
   created_at: string;
 }
 
+export interface Friend {
+  id: string;
+  user_id_1: string;
+  user_id_2: string;
+  status: "pending" | "accepted";
+  created_at: string;
+}
+
+export interface Post {
+  id: string;
+  user_id: string;
+  try_on_id: string;
+  caption: string | null;
+  created_at: string;
+  user?: Profile;
+  try_on?: TryOnResult;
+  likes?: PostLike[];
+  items?: WardrobeItem[];
+}
+
+export interface PostLike {
+  id: string;
+  post_id: string;
+  user_id: string;
+  created_at: string;
+}
+
 export interface TryOnResultWithItems extends TryOnResult {
   try_on_items: (TryOnItem & { wardrobe_item: WardrobeItem })[];
   is_favorited?: boolean;
