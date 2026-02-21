@@ -2,7 +2,7 @@ import { GoogleGenAI } from "@google/genai";
 import type { ResearchData, WeatherData } from "@/types/chatbot";
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! });
-const MODEL = "gemini-2.0-flash";
+const MODEL = "gemini-2.5-flash";
 
 const RESEARCH_PROMPT = `You are a travel fashion expert. Based on the destination and weather conditions provided, research and provide detailed clothing recommendations.
 

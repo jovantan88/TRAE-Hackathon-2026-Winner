@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { generateClothingName } from "@/lib/gemini/generate-clothing-name";
 import { segmentClothing } from "@/lib/gemini/segment-clothing";
 import { createSSEStream } from "@/lib/stream";
 import { NextResponse } from "next/server";
@@ -13,11 +14,11 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { imageBase64, mimeType, name, category } = await request.json();
+  const { imageBase64, mimeType, category } = await request.json();
 
-  if (!imageBase64 || !mimeType || !name || !category) {
+  if (!imageBase64 || !mimeType || !category) {
     return NextResponse.json(
-      { error: "Image data, mimeType, name, and category are required" },
+      { error: "Image data, mimeType, and category are required" },
       { status: 400 }
     );
   }
@@ -28,89 +29,43 @@ export async function POST(request: Request) {
     try {
       send({
         type: "status",
-        message: "Uploading original clothing photo...",
-        step: 1,
-        totalSteps: 4,
-      });
-
-      const originalFileName = `${user.id}/${crypto.randomUUID()}.${mimeType.split("/")[1]}`;
-      const originalBuffer = Buffer.from(imageBase64, "base64");
-
-      const { error: uploadError } = await supabase.storage
-        .from("wardrobe-originals")
-        .upload(originalFileName, originalBuffer, {
-          contentType: mimeType,
-        });
-
-      if (uploadError) {
-        throw new Error("Failed to upload image");
-      }
-
-      const {
-        data: { publicUrl: originalUrl },
-      } = supabase.storage
-        .from("wardrobe-originals")
-        .getPublicUrl(originalFileName);
-
-      send({
-        type: "status",
         message: "Extracting clothing item with AI...",
-        step: 2,
-        totalSteps: 4,
+        step: 1,
+        totalSteps: 3,
       });
 
       const result = await segmentClothing(imageBase64, mimeType, category);
 
       send({
         type: "status",
-        message: "Uploading processed clothing image...",
-        step: 3,
-        totalSteps: 4,
+        message: "Generating item name from extracted image...",
+        step: 2,
+        totalSteps: 3,
       });
 
-      const segmentedFileName = `${user.id}/${crypto.randomUUID()}.${result.mimeType.split("/")[1]}`;
-      const segmentedBuffer = Buffer.from(result.imageBase64, "base64");
-
-      const { error: segUploadError } = await supabase.storage
-        .from("wardrobe-segmented")
-        .upload(segmentedFileName, segmentedBuffer, {
-          contentType: result.mimeType,
-        });
-
-      if (segUploadError) {
-        throw new Error("Failed to upload segmented image");
-      }
-
-      const {
-        data: { publicUrl: segmentedUrl },
-      } = supabase.storage
-        .from("wardrobe-segmented")
-        .getPublicUrl(segmentedFileName);
+      const suggestedName = await generateClothingName(
+        result.imageBase64,
+        result.mimeType,
+        category
+      );
 
       send({
         type: "status",
-        message: "Saving wardrobe item...",
-        step: 4,
-        totalSteps: 4,
+        message: "Ready to review. Save or delete this draft.",
+        step: 3,
+        totalSteps: 3,
       });
 
-      const { data: item, error: insertError } = await supabase
-        .from("wardrobe_items")
-        .insert({
-          user_id: user.id,
-          name,
-          category,
-          original_image_url: originalUrl,
-          segmented_image_url: segmentedUrl,
-        })
-        .select()
-        .single();
-
-      if (insertError) {
-        throw new Error("Failed to save wardrobe item");
-      }
-
-      send({ type: "complete", data: { item } });
+      send({
+        type: "complete",
+        data: {
+          draft: {
+            suggestedName,
+            segmentedImageBase64: result.imageBase64,
+            segmentedMimeType: result.mimeType,
+          },
+        },
+      });
     } catch (error) {
       console.error("Segment clothing error:", error);
       send({

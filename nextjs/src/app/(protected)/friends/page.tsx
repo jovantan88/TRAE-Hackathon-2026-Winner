@@ -29,6 +29,14 @@ export default function FriendsPage() {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const supabase = createClient();
 
+  function getFriendsErrorMessage(error: { code?: string; message?: string } | null): string {
+    if (!error) return "Something went wrong.";
+    if (error.code === "42P01") {
+      return "Social tables are not installed yet. Run supabase-bootstrap-social.sql in Supabase SQL Editor.";
+    }
+    return error.message || "Something went wrong.";
+  }
+
   useEffect(() => {
     loadFriends();
   }, []);
@@ -41,10 +49,16 @@ export default function FriendsPage() {
     setCurrentUserId(user.id);
 
     // Get all friendships where user is involved
-    const { data: friendships } = await supabase
+    const { data: friendships, error } = await supabase
       .from("friends")
       .select("*")
       .or(`user_id_1.eq.${user.id},user_id_2.eq.${user.id}`);
+
+    if (error) {
+      toast.error(getFriendsErrorMessage(error));
+      setLoading(false);
+      return;
+    }
 
     if (!friendships?.length) {
       setLoading(false);
@@ -82,19 +96,75 @@ export default function FriendsPage() {
     if (!searchQuery.trim() || !currentUserId) return;
 
     setSearching(true);
-    const { data } = await supabase
+    const query = searchQuery.trim();
+
+    const { data, error } = await supabase
       .from("profiles")
       .select("*")
-      .ilike("full_name", `%${searchQuery}%`)
+      .or(`full_name.ilike.%${query}%,email.ilike.%${query}%`)
       .neq("id", currentUserId)
       .limit(10);
 
-    setSearchResults(data || []);
+    if (error) {
+      toast.error("Failed to search users");
+      setSearchResults([]);
+      setSearching(false);
+      return;
+    }
+
+    const existingConnectionIds = new Set(
+      friends.map((friend) =>
+        friend.user_id_1 === currentUserId ? friend.user_id_2 : friend.user_id_1
+      )
+    );
+
+    const filteredResults = (data || []).filter((profile) => !existingConnectionIds.has(profile.id));
+    setSearchResults(filteredResults);
     setSearching(false);
   }
 
   async function sendRequest(userId: string) {
     if (!currentUserId) return;
+
+    const { data: existingFriendship, error: existingError } = await supabase
+      .from("friends")
+      .select("id, status, user_id_1, user_id_2")
+      .or(
+        `and(user_id_1.eq.${currentUserId},user_id_2.eq.${userId}),and(user_id_1.eq.${userId},user_id_2.eq.${currentUserId})`
+      )
+      .maybeSingle();
+
+    if (existingError) {
+      toast.error(getFriendsErrorMessage(existingError));
+      return;
+    }
+
+    if (existingFriendship) {
+      if (existingFriendship.status === "accepted") {
+        toast.info("You are already friends");
+        return;
+      }
+
+      if (existingFriendship.status === "pending" && existingFriendship.user_id_1 === userId) {
+        const { error: acceptError } = await supabase
+          .from("friends")
+          .update({ status: "accepted" })
+          .eq("id", existingFriendship.id);
+
+        if (acceptError) {
+          toast.error("Failed to accept friend request");
+          return;
+        }
+
+        toast.success("Friend request accepted!");
+        loadFriends();
+        setSearchResults((prev) => prev.filter((p) => p.id !== userId));
+        return;
+      }
+
+      toast.info("Friend request already pending");
+      return;
+    }
 
     const { error } = await supabase.from("friends").insert({
       user_id_1: currentUserId,
@@ -103,7 +173,8 @@ export default function FriendsPage() {
     });
 
     if (error) {
-      toast.error("Failed to send friend request");
+      console.error("Friend request error:", error);
+      toast.error(getFriendsErrorMessage(error));
     } else {
       toast.success("Friend request sent!");
       loadFriends();
@@ -118,7 +189,7 @@ export default function FriendsPage() {
       .eq("id", requestId);
 
     if (error) {
-      toast.error(`Failed to ${status} request`);
+      toast.error(getFriendsErrorMessage(error));
     } else {
       toast.success(`Request ${status}`);
       loadFriends();
@@ -241,7 +312,7 @@ export default function FriendsPage() {
             <CardContent className="space-y-4">
               <form onSubmit={searchUsers} className="flex gap-2">
                 <Input
-                  placeholder="Search by name..."
+                  placeholder="Search by email or full name..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                 />
@@ -263,7 +334,10 @@ export default function FriendsPage() {
                             (user.full_name?.[0] || "U").toUpperCase()
                           )}
                         </div>
-                        <p className="font-medium text-sm">{user.full_name || "Anonymous User"}</p>
+                        <div>
+                          <p className="font-medium text-sm">{user.full_name || "Anonymous User"}</p>
+                          <p className="text-xs text-muted-foreground">{user.email}</p>
+                        </div>
                       </div>
                       {!isFriend && (
                         <Button size="sm" variant="ghost" onClick={() => sendRequest(user.id)}>

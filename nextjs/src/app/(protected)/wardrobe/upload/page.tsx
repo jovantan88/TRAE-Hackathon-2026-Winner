@@ -19,14 +19,18 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Upload, Loader2, ArrowLeft, Sparkles, Shirt } from "lucide-react";
+import { Upload, Loader2, ArrowLeft, Sparkles, Shirt, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useStreamingRequest } from "@/hooks/use-streaming-request";
 import { motion, AnimatePresence } from "framer-motion";
-import type { ClothingCategory, WardrobeItem } from "@/types";
+import type { ClothingCategory } from "@/types";
 
 interface SegmentClothingResponse {
-  item: WardrobeItem;
+  draft: {
+    suggestedName: string;
+    segmentedImageBase64: string;
+    segmentedMimeType: string;
+  };
 }
 
 const categories: { value: ClothingCategory; label: string }[] = [
@@ -42,6 +46,10 @@ const categories: { value: ClothingCategory; label: string }[] = [
 
 export default function UploadClothingPage() {
   const [name, setName] = useState("");
+  const [segmentedPreview, setSegmentedPreview] = useState<string | null>(null);
+  const [segmentedBase64, setSegmentedBase64] = useState<string | null>(null);
+  const [segmentedMimeType, setSegmentedMimeType] = useState<string>("");
+  const [isSaving, setIsSaving] = useState(false);
   const [category, setCategory] = useState<ClothingCategory>("tops");
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [imageMimeType, setImageMimeType] = useState<string>("");
@@ -50,24 +58,36 @@ export default function UploadClothingPage() {
   const streaming = useStreamingRequest<SegmentClothingResponse>();
   const router = useRouter();
 
-  const handleFile = useCallback((file: File) => {
-    if (!file.type.startsWith("image/")) {
-      setError("Please upload an image file");
-      return;
-    }
-    if (file.size > 10 * 1024 * 1024) {
-      setError("Image must be under 10MB");
-      return;
-    }
+  const resetDraft = useCallback(() => {
+    setName("");
+    setSegmentedPreview(null);
+    setSegmentedBase64(null);
+    setSegmentedMimeType("");
+    streaming.reset();
+  }, [streaming.reset]);
 
-    setError(null);
-    setImageMimeType(file.type);
-    const reader = new FileReader();
-    reader.onload = () => {
-      setImagePreview(reader.result as string);
-    };
-    reader.readAsDataURL(file);
-  }, []);
+  const handleFile = useCallback(
+    (file: File) => {
+      if (!file.type.startsWith("image/")) {
+        setError("Please upload an image file");
+        return;
+      }
+      if (file.size > 10 * 1024 * 1024) {
+        setError("Image must be under 10MB");
+        return;
+      }
+
+      setError(null);
+      resetDraft();
+      setImageMimeType(file.type);
+      const reader = new FileReader();
+      reader.onload = () => {
+        setImagePreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    },
+    [resetDraft]
+  );
 
   const handleDrop = useCallback(
     (e: React.DragEvent) => {
@@ -79,9 +99,9 @@ export default function UploadClothingPage() {
     [handleFile]
   );
 
-  async function handleSubmit(e: React.FormEvent) {
+  async function handleGenerate(e: React.FormEvent) {
     e.preventDefault();
-    if (!imagePreview || !name) return;
+    if (!imagePreview) return;
 
     setError(null);
 
@@ -89,14 +109,60 @@ export default function UploadClothingPage() {
     const result = await streaming.execute("/api/ai/segment-clothing", {
       imageBase64: base64,
       mimeType: imageMimeType,
-      name,
       category,
     });
 
-    if (result) {
+    if (result?.draft) {
+      setName(result.draft.suggestedName);
+      setSegmentedBase64(result.draft.segmentedImageBase64);
+      setSegmentedMimeType(result.draft.segmentedMimeType);
+      setSegmentedPreview(
+        `data:${result.draft.segmentedMimeType};base64,${result.draft.segmentedImageBase64}`
+      );
+    }
+  }
+
+  async function handleSave() {
+    if (!imagePreview || !imageMimeType || !name || !segmentedBase64 || !segmentedMimeType) {
+      return;
+    }
+
+    setError(null);
+    setIsSaving(true);
+
+    try {
+      const response = await fetch("/api/wardrobe/save-item", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name,
+          category,
+          originalImageBase64: imagePreview.split(",")[1],
+          originalMimeType: imageMimeType,
+          segmentedImageBase64: segmentedBase64,
+          segmentedMimeType,
+        }),
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to save wardrobe item");
+      }
+
       router.push("/wardrobe");
       router.refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to save wardrobe item");
+    } finally {
+      setIsSaving(false);
     }
+  }
+
+  function handleDelete() {
+    resetDraft();
+    setImagePreview(null);
+    setImageMimeType("");
+    setError(null);
   }
 
   const displayError = error || streaming.error;
@@ -132,7 +198,7 @@ export default function UploadClothingPage() {
           </div>
         </CardHeader>
         <CardContent className="p-6">
-          <form onSubmit={handleSubmit} className="space-y-8">
+          <form onSubmit={handleGenerate} className="space-y-8">
             <AnimatePresence mode="wait">
               {displayError && (
                 <motion.div 
@@ -175,6 +241,27 @@ export default function UploadClothingPage() {
                 </motion.div>
               )}
             </AnimatePresence>
+
+            {segmentedPreview && (
+              <div className="grid sm:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <Label className="text-sm text-muted-foreground">Original</Label>
+                  <img
+                    src={imagePreview ?? ""}
+                    alt="Original clothing"
+                    className="w-full max-h-64 rounded-xl object-contain border border-border/50 bg-secondary/20"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-sm text-muted-foreground">Extracted</Label>
+                  <img
+                    src={segmentedPreview}
+                    alt="Extracted clothing"
+                    className="w-full max-h-64 rounded-xl object-contain border border-border/50 bg-secondary/20"
+                  />
+                </div>
+              </div>
+            )}
 
             <div
               className={`relative border-2 border-dashed rounded-2xl p-8 text-center transition-all duration-300 cursor-pointer overflow-hidden ${
@@ -248,10 +335,11 @@ export default function UploadClothingPage() {
                 <Label htmlFor="name" className="text-base">Item Name</Label>
                 <Input
                   id="name"
-                  placeholder="e.g., Blue Denim Jacket"
+                  placeholder={segmentedPreview ? "AI suggested name (editable)" : "Generated after extraction"}
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   required
+                  disabled={!segmentedPreview || isSaving}
                   className="h-12 text-base bg-secondary/30 border-border/50 focus:bg-background"
                 />
               </div>
@@ -261,6 +349,7 @@ export default function UploadClothingPage() {
                 <Select
                   value={category}
                   onValueChange={(v) => setCategory(v as ClothingCategory)}
+                  disabled={streaming.isStreaming || isSaving}
                 >
                   <SelectTrigger className="h-12 text-base bg-secondary/30 border-border/50 focus:bg-background">
                     <SelectValue />
@@ -276,23 +365,56 @@ export default function UploadClothingPage() {
               </div>
             </div>
 
-            <Button
-              type="submit"
-              className="w-full h-14 text-lg shadow-lg shadow-primary/20 hover:shadow-xl hover:shadow-primary/30 transition-all mt-4"
-              disabled={streaming.isStreaming || !imagePreview || !name}
-            >
-              {streaming.isStreaming ? (
-                <>
-                  <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                  {streaming.status || "Processing..."}
-                </>
-              ) : (
-                <>
-                  <Sparkles className="mr-2 h-5 w-5" />
-                  Upload & Process Item
-                </>
-              )}
-            </Button>
+            {!segmentedPreview ? (
+              <Button
+                type="submit"
+                className="w-full h-14 text-lg shadow-lg shadow-primary/20 hover:shadow-xl hover:shadow-primary/30 transition-all mt-4"
+                disabled={streaming.isStreaming || !imagePreview}
+              >
+                {streaming.isStreaming ? (
+                  <>
+                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                    {streaming.status || "Processing..."}
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="mr-2 h-5 w-5" />
+                    Generate Extracted Item
+                  </>
+                )}
+              </Button>
+            ) : (
+              <div className="grid sm:grid-cols-2 gap-4 mt-4">
+                <Button
+                  type="button"
+                  variant="destructive"
+                  onClick={handleDelete}
+                  disabled={isSaving}
+                  className="h-12"
+                >
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Delete Draft
+                </Button>
+                <Button
+                  type="button"
+                  onClick={handleSave}
+                  disabled={isSaving || !name.trim()}
+                  className="h-12"
+                >
+                  {isSaving ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="mr-2 h-4 w-4" />
+                      Save Item
+                    </>
+                  )}
+                </Button>
+              </div>
+            )}
           </form>
         </CardContent>
       </Card>
