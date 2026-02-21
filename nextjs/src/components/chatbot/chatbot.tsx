@@ -37,6 +37,10 @@ export function Chatbot({ isOpen = true, onClose }: ChatbotProps) {
   const [currentResearch, setCurrentResearch] = useState<ResearchData | null>(null);
   const [currentOutfit, setCurrentOutfit] = useState<OutfitRecommendation | null>(null);
   const [showChat, setShowChat] = useState(false);
+  const [streamStatus, setStreamStatus] = useState("");
+  const [streamStep, setStreamStep] = useState(0);
+  const [streamTotalSteps, setStreamTotalSteps] = useState(0);
+  const [statusHistory, setStatusHistory] = useState<string[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -76,6 +80,10 @@ export function Chatbot({ isOpen = true, onClose }: ChatbotProps) {
     setCurrentWeather(null);
     setCurrentResearch(null);
     setCurrentOutfit(null);
+    setStreamStatus("Starting...");
+    setStreamStep(0);
+    setStreamTotalSteps(0);
+    setStatusHistory([]);
 
     const assistantMessage: ChatMessage = {
       id: crypto.randomUUID(),
@@ -125,7 +133,17 @@ export function Chatbot({ isOpen = true, onClose }: ChatbotProps) {
             continue;
           }
 
-          if (event.type === "complete" && event.data) {
+          if (event.type === "status") {
+            const nextStatus = event.message || "Working...";
+            setStreamStatus(nextStatus);
+            setStreamStep(event.step || 0);
+            setStreamTotalSteps(event.totalSteps || 0);
+
+            setStatusHistory((prev) => {
+              if (prev[prev.length - 1] === nextStatus) return prev;
+              return [...prev, nextStatus];
+            });
+          } else if (event.type === "complete" && event.data) {
             setCurrentWeather(event.data.weather);
             setCurrentResearch(event.data.research);
             setCurrentOutfit(event.data.outfitRecommendation || null);
@@ -265,9 +283,30 @@ export function Chatbot({ isOpen = true, onClose }: ChatbotProps) {
                     }`}
                   >
                     {message.isLoading ? (
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                        <span>Getting recommendations...</span>
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          <span>{streamStatus || "Getting recommendations..."}</span>
+                          {streamTotalSteps > 0 && (
+                            <span className="text-xs">({Math.max(streamStep, 1)}/{streamTotalSteps})</span>
+                          )}
+                        </div>
+                        {statusHistory.length > 0 && (
+                          <div className="space-y-1">
+                            {statusHistory.slice(-4).map((status, idx) => {
+                              const isLatest = idx === statusHistory.slice(-4).length - 1;
+                              return (
+                                <div
+                                  key={`${status}-${idx}`}
+                                  className={`text-xs ${isLatest ? "text-foreground" : "text-muted-foreground"}`}
+                                >
+                                  {isLatest ? "• " : "✓ "}
+                                  {status}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
                       </div>
                     ) : (
                       <div className="text-sm whitespace-pre-wrap">{message.content}</div>

@@ -13,7 +13,14 @@ export interface ChatbotResponse {
   wardrobeItems?: Array<{ id: string; name: string; category: string; imageUrl: string }>;
 }
 
-export async function processChatbotInput(userInput: string): Promise<ChatbotResponse> {
+type StatusReporter = (message: string, step: number, totalSteps: number) => void;
+
+export async function processChatbotInput(
+  userInput: string,
+  onStatus?: StatusReporter
+): Promise<ChatbotResponse> {
+  const totalSteps = 6;
+  onStatus?.("Understanding destination and date...", 1, totalSteps);
   const parsed = parseLocationDateInput(userInput);
   
   if (!parsed) {
@@ -25,14 +32,17 @@ export async function processChatbotInput(userInput: string): Promise<ChatbotRes
     throw new Error(validation.error || "Invalid input");
   }
   
+  onStatus?.("Fetching weather data...", 2, totalSteps);
   const weather = await getWeather(parsed.location, parsed.date);
   
+  onStatus?.("Researching clothing recommendations...", 3, totalSteps);
   const research = await researchClothing(parsed.location, weather, parsed.date);
   
   let outfitRecommendation: OutfitRecommendation | undefined;
   let wardrobeItems: Array<{ id: string; name: string; category: string; imageUrl: string }> = [];
   
   try {
+    onStatus?.("Checking your wardrobe for matching pieces...", 4, totalSteps);
     const supabase = await createClient();
     const {
       data: { user },
@@ -53,16 +63,24 @@ export async function processChatbotInput(userInput: string): Promise<ChatbotRes
           imageUrl: item.segmented_image_url || item.original_image_url,
         }));
         
+        onStatus?.("Building your outfit from wardrobe items...", 5, totalSteps);
         const recommendation = await generateOutfitRecommendation(wardrobeItems, weather, research);
         outfitRecommendation = {
           items: recommendation.items,
           summary: recommendation.summary,
         };
+      } else {
+        onStatus?.("No saved wardrobe items found, using generic tips...", 5, totalSteps);
       }
+    } else {
+      onStatus?.("Sign in detected no user session, using generic tips...", 5, totalSteps);
     }
   } catch (error) {
     console.error("Wardrobe fetch error:", error);
+    onStatus?.("Couldn't access wardrobe, continuing with weather-based guidance...", 5, totalSteps);
   }
+
+  onStatus?.("Finalizing your travel outfit guide...", 6, totalSteps);
   
   return {
     location: parsed.location,

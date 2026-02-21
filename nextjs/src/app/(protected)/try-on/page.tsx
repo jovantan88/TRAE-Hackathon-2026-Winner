@@ -19,6 +19,7 @@ import {
 import Link from "next/link";
 import { useStreamingRequest } from "@/hooks/use-streaming-request";
 import { motion, AnimatePresence } from "framer-motion";
+import { toast } from "sonner";
 import type { UserModel, WardrobeItem, ClothingCategory } from "@/types";
 import type { TryOnResult } from "@/types";
 
@@ -46,6 +47,8 @@ export default function TryOnPage() {
   const [loading, setLoading] = useState(true);
   const [resultImage, setResultImage] = useState<string | null>(null);
   const [resultId, setResultId] = useState<string | null>(null);
+  const [isSavingFavorite, setIsSavingFavorite] = useState(false);
+  const [isFavorited, setIsFavorited] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const streaming = useStreamingRequest<GenerateTryOnResponse>();
   const supabase = createClient();
@@ -99,20 +102,51 @@ export default function TryOnPage() {
     if (result?.tryOnResult) {
       setResultImage(result.tryOnResult.result_image_url);
       setResultId(result.tryOnResult.id);
+      setIsFavorited(false);
     }
   }
 
   async function handleFavorite() {
-    if (!resultId) return;
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) return;
+    if (!resultId || isSavingFavorite) return;
+    if (isFavorited) {
+      toast.success("Look already saved to favorites.");
+      return;
+    }
 
-    await supabase.from("favorites").insert({
-      user_id: user.id,
-      try_on_id: resultId,
-    });
+    setIsSavingFavorite(true);
+    try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (!user) {
+        toast.error("Please sign in to save favorites.");
+        return;
+      }
+
+      const { error: saveError } = await supabase.from("favorites").insert({
+        user_id: user.id,
+        try_on_id: resultId,
+      });
+
+      if (saveError) {
+        // Handle unique constraint collisions gracefully to avoid confusing users.
+        if (saveError.code === "23505") {
+          setIsFavorited(true);
+          toast.success("Look already saved to favorites.");
+          return;
+        }
+        throw saveError;
+      }
+
+      setIsFavorited(true);
+      toast.success("Saved to favorites.");
+    } catch (saveError) {
+      console.error("Favorite save error:", saveError);
+      toast.error("Could not save look. Please try again.");
+    } finally {
+      setIsSavingFavorite(false);
+    }
   }
 
   const filteredItems =
@@ -253,9 +287,20 @@ export default function TryOnPage() {
                         variant="secondary"
                         className="flex-1 bg-background/90 backdrop-blur-md hover:bg-background"
                         onClick={handleFavorite}
+                        disabled={isSavingFavorite}
                       >
-                        <Heart className="mr-2 h-4 w-4" />
-                        Save Look
+                        {isSavingFavorite ? (
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        ) : isFavorited ? (
+                          <Check className="mr-2 h-4 w-4" />
+                        ) : (
+                          <Heart className="mr-2 h-4 w-4" />
+                        )}
+                        {isSavingFavorite
+                          ? "Saving..."
+                          : isFavorited
+                            ? "Saved"
+                            : "Save Look"}
                       </Button>
                       <Button
                         variant="secondary"

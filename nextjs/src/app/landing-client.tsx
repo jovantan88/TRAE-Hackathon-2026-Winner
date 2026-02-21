@@ -19,7 +19,7 @@ export function LandingClient() {
             <div className="bg-primary text-primary-foreground p-1.5 rounded-lg group-hover:scale-105 transition-transform">
               <Shirt className="h-5 w-5" />
             </div>
-            <span className="text-lg font-semibold tracking-tight">StyleAI</span>
+            <span className="text-lg font-semibold tracking-tight">COCO</span>
           </div>
           <div className="flex items-center gap-4">
             <Button 
@@ -191,10 +191,10 @@ export function LandingClient() {
         <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2 text-muted-foreground">
             <Shirt className="h-5 w-5" />
-            <span className="font-medium">StyleAI</span>
+            <span className="font-medium">COCO</span>
           </div>
           <p className="text-sm text-muted-foreground">
-            &copy; {new Date().getFullYear()} StyleAI. All rights reserved.
+            &copy; {new Date().getFullYear()} COCO. All rights reserved.
           </p>
         </div>
       </footer>

@@ -5,7 +5,6 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Heart, MessageCircle, Share2, Globe, Sparkles } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -218,11 +217,17 @@ export default function FeedPage() {
                   </CardHeader>
                   <CardContent className="p-0">
                     <div className="relative aspect-[3/4] bg-secondary/30">
-                      <img
-                        src={post.try_on?.result_image_url}
-                        alt="Outfit"
-                        className="w-full h-full object-cover"
-                      />
+                      {post.try_on?.result_image_url ? (
+                        <img
+                          src={post.try_on.result_image_url}
+                          alt="Outfit"
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-full h-full grid place-items-center text-muted-foreground text-sm">
+                          Image not available yet
+                        </div>
+                      )}
                     </div>
                     <div className="p-4 space-y-4">
                       <div className="flex items-center gap-4">
@@ -253,11 +258,24 @@ export default function FeedPage() {
                       {post.items && post.items.length > 0 && (
                         <div className="pt-2">
                           <p className="text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wider">Tagged Items</p>
-                          <div className="flex flex-wrap gap-1.5">
+                          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                             {post.items.map((item) => (
-                              <Badge key={item.id} variant="secondary" className="bg-secondary/50 hover:bg-secondary text-xs">
-                                {item.name}
-                              </Badge>
+                              <div key={item.id} className="rounded-lg border border-border/50 overflow-hidden bg-secondary/20">
+                                <div className="aspect-square bg-secondary/30">
+                                  {item.segmented_image_url || item.original_image_url ? (
+                                    <img
+                                      src={item.segmented_image_url || item.original_image_url}
+                                      alt={item.name}
+                                      className="w-full h-full object-cover"
+                                    />
+                                  ) : (
+                                    <div className="w-full h-full grid place-items-center text-[11px] text-muted-foreground">
+                                      No image
+                                    </div>
+                                  )}
+                                </div>
+                                <p className="text-[11px] px-2 py-1.5 truncate">{item.name}</p>
+                              </div>
                             ))}
                           </div>
                         </div>

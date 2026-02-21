@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "StyleAI - AI Virtual Wardrobe",
+  title: "COCO - AI Virtual Wardrobe",
   description:
     "Your AI-powered virtual wardrobe. Upload your photo, add your clothes, and see how any outfit looks on you.",
 };

@@ -45,7 +45,7 @@ export function Sidebar() {
           <div className="bg-primary text-primary-foreground p-1.5 rounded-lg">
             <Shirt className="h-5 w-5" />
           </div>
-          <span className="text-lg font-semibold tracking-tight">StyleAI</span>
+          <span className="text-lg font-semibold tracking-tight">COCO</span>
         </div>
         <nav className="flex-1 px-4 py-6 space-y-1.5 overflow-y-auto">
           {navItems.map((item) => {
