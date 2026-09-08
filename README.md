@@ -68,7 +68,7 @@ flowchart LR
 ### 1. Install
 
 ```bash
-git clone https://github.com/jovantan88/TRAE-Hackathon-2026.git
+git clone https://github.com/jovantan88/TRAE-Hackathon-2026-Winner.git
 cd TRAE-Hackathon-2026/nextjs
 npm install
 ```
