@@ -58,7 +58,7 @@ export function LandingClient() {
                 className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-secondary/50 border border-border/50 text-sm font-medium text-muted-foreground mb-8"
               >
                 <Sparkles className="h-4 w-4 text-primary" />
-                <span>The future of personal styling</span>
+                <span>1st Place · SG TRAE Hackathon 2026</span>
               </motion.div>
               
               <motion.h1
@@ -193,8 +193,18 @@ export function LandingClient() {
             <Shirt className="h-5 w-5" />
             <span className="font-medium">COCO</span>
           </div>
-          <p className="text-sm text-muted-foreground">
-            &copy; {new Date().getFullYear()} COCO. All rights reserved.
+          <p className="text-sm text-muted-foreground text-center md:text-right">
+            1st Place Winner —{" "}
+            <a
+              href="https://luma.com/oj8674lc"
+              target="_blank"
+              rel="noreferrer"
+              className="underline-offset-4 hover:underline"
+            >
+              SG TRAE Hackathon 2026
+            </a>
+            <span className="mx-2 text-border">·</span>
+            &copy; {new Date().getFullYear()} COCO
           </p>
         </div>
       </footer>

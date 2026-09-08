@@ -1,7 +1,8 @@
 {
-  "name": "nextjs",
-  "version": "0.1.0",
+  "name": "coco",
+  "version": "1.0.0",
   "private": true,
+  "description": "AI virtual wardrobe — 1st place winner of SG TRAE Hackathon 2026",
   "scripts": {
     "dev": "next dev",
     "build": "next build",

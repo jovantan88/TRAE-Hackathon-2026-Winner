@@ -14,9 +14,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "COCO - AI Virtual Wardrobe",
+  title: "COCO — AI Virtual Wardrobe",
   description:
-    "Your AI-powered virtual wardrobe. Upload your photo, add your clothes, and see how any outfit looks on you.",
+    "1st place winner of SG TRAE Hackathon 2026. Upload your photo, digitize your clothes, and see how any outfit looks on you.",
 };
 
 export default function RootLayout({
